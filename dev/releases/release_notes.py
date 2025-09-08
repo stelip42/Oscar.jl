@@ -151,7 +151,7 @@ def get_pr_list(date: str, extra: str) -> List[Dict[str, Any]]:
             "--json",
             "number,title,closedAt,labels,mergedAt,body",
             "--limit",
-            "1",
+            "200",
         ],
         check=True,
         capture_output=True,
@@ -296,10 +296,10 @@ which we think might affect some users directly.
                 "general section of the topic section in the changelog.\n\n")
             for pr in prs_with_use_title:
                 for topic in topics:
-                    matches = [pr for pr in prs_with_use_title if has_label(pr, topic[0])]
+                    matches = [pr for pr in prs_with_use_title if has_label(pr, topic)]
                     if len(matches) == 0:
                         continue
-                    relnotes_file.write(f'#### {topic[1]}\n\n')
+                    relnotes_file.write(f'#### {topics[topic]}\n\n')
                     for match in matches:
                         relnotes_file.write(pr_to_md(match))
                         prs_with_use_title.remove(match)
