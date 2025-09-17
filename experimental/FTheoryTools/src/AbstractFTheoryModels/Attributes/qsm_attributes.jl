@@ -4,7 +4,7 @@
 
 @define_model_attribute_getter((vertices, Vector{Vector{QQFieldElem}}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(FTheoryTools: add ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -21,7 +21,7 @@
 
 @define_model_attribute_getter((polytope_index, Int),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(FTheoryTools: add ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -34,7 +34,7 @@
 
 @define_model_attribute_getter((has_quick_triangulation, Bool),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(FTheoryTools: add ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -47,7 +47,7 @@
 
 @define_model_attribute_getter((max_lattice_pts_in_facet, Int),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -60,7 +60,7 @@
 
 @define_model_attribute_getter((estimated_number_of_triangulations, Int),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -77,7 +77,7 @@
 
 @define_model_attribute_getter((genera_of_ci_curves, Dict{MPolyDecRingElem,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -91,7 +91,7 @@
 @define_model_attribute_getter(
   (degrees_of_kbar_restrictions_to_ci_curves, Dict{MPolyDecRingElem,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -106,7 +106,7 @@
 @define_model_attribute_getter(
   (topological_intersection_numbers_among_ci_curves, Matrix{Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -120,7 +120,7 @@
 
 @define_model_attribute_getter((indices_of_trivial_ci_curves, Vector{Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -145,7 +145,7 @@
 @define_model_attribute_getter(
   (topological_intersection_numbers_among_nontrivial_ci_curves, Matrix{Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -163,22 +163,20 @@
 
 @define_model_attribute_getter((dual_graph, Graph{Undirected}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
-
-  julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
-  Hypersurface model over a concrete base
-
-  julia> dual_graph(qsm_model)
-  Undirected graph with 21 nodes and the following edges:
-  (5, 1)(6, 5)(7, 6)(8, 7)(9, 4)(9, 8)(10, 1)(11, 4)(12, 3)(12, 10)(13, 3)(13, 11)(14, 1)(15, 4)(16, 3)(17, 3)(18, 2)(18, 14)(19, 2)(19, 15)(20, 2)(20, 16)(21, 2)(21, 17)
-  ```
-  """, "See [The Dual Graph](@ref qsm_dual_graph) for more details.")
-
-@define_model_attribute_getter((components_of_dual_graph, Vector{String}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
+||||||| parent of ee0511e34f1 (FTheoryTools: add ensure_qsmdb_installed())
+"""
+```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
+julia> using Random;
+=======
+"""
+```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
+julia> using Random;
+>>>>>>> ee0511e34f1 (FTheoryTools: add ensure_qsmdb_installed())
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
   Hypersurface model over a concrete base
@@ -191,7 +189,7 @@
 @define_model_attribute_getter(
   (degrees_of_kbar_restrictions_to_components_of_dual_graph, Dict{String,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -205,7 +203,7 @@
 
 @define_model_attribute_getter((genera_of_components_of_dual_graph, Dict{String,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -223,7 +221,7 @@
 
 @define_model_attribute_getter((simplified_dual_graph, Graph{Undirected}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -237,7 +235,7 @@
 
 @define_model_attribute_getter((components_of_simplified_dual_graph, Vector{String}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -251,7 +249,7 @@
 @define_model_attribute_getter(
   (degrees_of_kbar_restrictions_to_components_of_simplified_dual_graph, Dict{String,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
@@ -266,7 +264,7 @@
 @define_model_attribute_getter(
   (genera_of_components_of_simplified_dual_graph, Dict{String,Int64}),
   """
-  ```jldoctest; setup = :(Oscar.LazyArtifacts.ensure_artifact_installed("QSMDB", Oscar.LazyArtifacts.find_artifacts_toml(Oscar.oscardir)))
+  ```jldoctest; setup = :(Oscar.ensure_qsmdb_installed())
   julia> using Random;
 
   julia> qsm_model = literature_model(arxiv_id = "1903.00009", model_parameters = Dict("k" => 4), rng = Random.Xoshiro(1234))
