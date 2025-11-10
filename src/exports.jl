@@ -1436,6 +1436,7 @@ export pentagonal_hexecontahedron
 export pentagonal_icositetrahedron
 export perfect_group
 export perfect_group_identification, has_perfect_group_identification
+export perfect_numbers
 export perles_matroid
 export perles_nonrational_8_polytope
 export perm

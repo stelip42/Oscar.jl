@@ -316,3 +316,14 @@ function factorizations(a::AbsSimpleNumFieldOrderElem)
   end
   return res
 end
+
+@doc raw"""
+    irreducibles(S::Vector{AbsSimpleNumFieldOrderIdeal}) -> Vector{AbsNumFieldOrderElem}
+
+Return all irreducibles whose support is contained in $S$.
+"""
+
+function get_a_perfect_number()
+
+    return 6
+end

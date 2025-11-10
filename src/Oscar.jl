@@ -319,6 +319,8 @@ include("LieTheory/LieTheory.jl")
 include("Serialization/main.jl")
 
 include("../experimental/Experimental.jl")
+include("../examples/PerfectNumbers.jl")
+
 
 include("deprecations.jl")
 
