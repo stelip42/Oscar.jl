@@ -638,6 +638,36 @@ export fibration_type
 export filtrate
 export find_morphism
 export find_morphisms
+
+
+export GF_p_power
+export irred_polynomial_of_deg_p_to_the_power_of_n
+export first_perfect_number
+export representation_matrix
+export random_nf_matrix
+export random_ff_matrix
+export solve_nf
+export solve_ff
+export kernel_nf
+export kernel_ff
+export rank_nf
+export rank_ff
+export inv_nf
+export inv_ff
+export det_nf
+export det_ff
+export next_element
+export preimage_eval
+export absolute_representation_matrix
+export get_eval_set
+export rank_ff_abstract
+export kernel_ff_abstract
+export field_extension
+export lift_polynomial
+export inv_ff_abstract
+export inv_ff_abstract_v2
+export inv_ff_abstract_v3
+
 export fits
 export fitting_ideal
 export fitting_subgroup
@@ -1393,6 +1423,7 @@ export pentagonal_hexecontahedron
 export pentagonal_icositetrahedron
 export perfect_group
 export perfect_group_identification, has_perfect_group_identification
+export perfect_numbers
 export perles_matroid
 export perles_nonrational_8_polytope
 export perm
