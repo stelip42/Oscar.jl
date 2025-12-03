@@ -667,6 +667,10 @@ export lift_polynomial
 export inv_ff_abstract
 export inv_ff_abstract_v2
 export inv_ff_abstract_v3
+export has_nonzero_determinant
+export how_many_trues
+export rank_monte_carlo
+export rank_monte_carlo_v2
 
 export fits
 export fitting_ideal

@@ -1,28 +1,25 @@
 
-@doc raw"""
-    random_nf_matrix(Qa::AbsSimpleNumField, n::Int, m::Int, range::Int) -> AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}
 
-Returns a random $n$x$m$ matrix over $Qa$ as a sum of random matrices M_i over a_i*QQ, where a_i is the i-th basis element of $Qa$. 
-All nominators and denominators of rational coefficients are in [-$range$:$range$]
+
+@doc raw"""
+    rank_nf(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}) -> Int
+
+Returns the rank of $A$. 
 """
-function random_nf_matrix(Qa::AbsSimpleNumField, n::Int, m::Int, range::Int)
-    a = gen(Qa,1)
-    d = degree(Qa)
-    S = matrix_space(QQ, n, m)
-    M = zero(Qa)
-    for i = 1:d
-        r = rand(S, -range:range)
-        M += r*a^i
-    end
-    return M
+function rank_nf(A::MatrixElem{T}) where T <: NumFieldElem
+    
+    #reduce the problem to compute the rank r of the representation matrix of A over QQ. Then r divided by degree(Qa) equals to rank(A) 
+    A_rational = matrix(QQ, representation_matrix(A))
+    d = degree(parent(A[1,1]))
+    return divexact(rank(A_rational),d)
 end
 
-#maybe useful function: absolute_representation_matrix - I have to check
+
 @doc raw"""
     representation_matrix(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}) -> QQMatrix
 
 Returns a matrix with rational entries representing multiplication with $A$ with respect to the power basis of the generator of the parent of $a$. 
-The matrix is of type QQMatrix.
+The output matrix is of type QQMatrix.
 """
 function representation_matrix(A::MatrixElem{T}) where T <: NumFieldElem
     Qa = parent(A[1,1])
@@ -43,6 +40,44 @@ function representation_matrix(A::MatrixElem{T}) where T <: NumFieldElem
         end
     end
     return A_new
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#maybe useful function: absolute_representation_matrix - is only for finite fields!
+
+#SPACE FOR UNUSED CODE
+
+
+@doc raw"""
+    random_nf_matrix(Qa::AbsSimpleNumField, n::Int, m::Int, range::Int) -> AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}
+
+Returns a random $n$x$m$ matrix over $Qa$ as a sum of random matrices M_i over a_i*QQ, where a_i is the i-th basis element of $Qa$. 
+All nominators and denominators of rational coefficients are in [-$range$:$range$]
+"""
+function random_nf_matrix(Qa::AbsSimpleNumField, n::Int, m::Int, range::Int)
+    a = gen(Qa,1)
+    d = degree(Qa)
+    S = matrix_space(QQ, n, m)
+    M = zero(Qa)
+    for i = 1:d
+        r = rand(S, -range:range)
+        M += r*a^i
+    end
+    return M
 end
 
 @doc raw"""
@@ -114,18 +149,7 @@ function kernel_nf(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem
     #return K
 end
 
-@doc raw"""
-    rank_nf(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}) -> Int
 
-Returns the rank of $A$. 
-"""
-function rank_nf(A::MatrixElem{T}) where T <: NumFieldElem
-    
-    #reduce the problem to compute the rank r of the representation matrix of A over QQ. Then r divided by degree(Qa) equals to rank(A) 
-    A_rational = matrix(QQ, representation_matrix(A))
-    d = degree(parent(A[1,1]))
-    return divexact(rank(A_rational),d)
-end
 
 @doc raw"""
     det_nf(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumFieldElem}) -> AbsSimpleNumFieldElem
@@ -183,4 +207,3 @@ function preimage_eval(A::AbstractAlgebra.Generic.MatSpaceElem{AbsSimpleNumField
     end
     return A_new
 end
-
