@@ -1,5 +1,3 @@
-using Infiltrator
-
 @doc raw"""
     rank_ff_abstract(M::MatrixElem{T}) where {T <: NumFieldElem} -> Int
 
@@ -688,9 +686,9 @@ function inv_ff_abstract(M::MatrixElem{T}) where {T <: AbstractAlgebra.Generic.R
     for i = 1:n
         for j = 1:n
             a = interpolate(Kx, eval_set, [images[k][i,j] for k in 1:e_len])
-            @infiltrate
+            #@infiltrate
             _, f, g = rational_reconstruction(a,b)
-            @infiltrate
+            #@infiltrate
             A[i,j] = f//g
         end
     end

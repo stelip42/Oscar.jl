@@ -1,6 +1,3 @@
-using Infiltrator
-
-
 
 @doc raw"""
     rank_monte_carlo(M::MatrixElem{T}, ϵ::Float64) where {T <: PolyRingElem} -> Int

@@ -1,5 +1,3 @@
-using Infiltrator
-
 # BASIC OPERATIONS IN QUOTIENT RINGS OVER MAXIMAL ORDERS OF NUMBER FIELDS
 
 function gcdx5(a::Union{AbsSimpleNumFieldOrderQuoRingElem}, b::Union{AbsSimpleNumFieldOrderQuoRingElem})
@@ -379,7 +377,7 @@ function partition_of_one(af::AbsSimpleNumFieldOrderIdeal, bf::AbsSimpleNumField
     print(a)
     print(" ")
     println(1-a)
-    @infiltrate
+    #@infiltrate
     return (a, 1-a)
 end
 
@@ -603,7 +601,7 @@ function shifted_popov(A::MatrixElem{T}, a::Vector{Int}, b::Vector{Int}) where {
         println(L)
         iter = iter+1
 
-        @infiltrate
+        #@infiltrate
 
         if iter == 100
             error("Zu viele Iterationen...")
