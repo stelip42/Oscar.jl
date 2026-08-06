@@ -552,6 +552,9 @@ function shifted_popov(A::MatrixElem{T}, a::Vector{Int}, b::Vector{Int}) where {
                 push!(Lambda, l)
             end
         end
+
+        #if is_empty(Lambda)
+
         pi = 0
         diff = maximum([nvec[l] - mu[l] for l in Lambda])
         for l in Lambda
