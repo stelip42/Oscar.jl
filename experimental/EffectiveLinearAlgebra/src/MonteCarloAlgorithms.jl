@@ -195,9 +195,9 @@ function rank_interpolation_mc(M::MatrixElem{T}, ϵ::Float64) where {T <: PolyRi
     m = ncols(M)
     min_ = min(n,m)
 
-    maxdeg = maximum(degree(M[i,j]) for i in 1:n, j in 1:n)
+    maxdeg = maximum(degree(M[i,j]) for i in 1:n, j in 1:m)
     det_deg = maxdeg*min_
-    S = get_eval_set(K, 10*det_deg)
+    S = get_eval_set(K, max(10*det_deg, 1))
     #k is the minimum amount of evaluations of M needed to compute the correct rank of M with error probability < ϵ
     k = ceil(log(10, 1/ϵ))
     r = 0

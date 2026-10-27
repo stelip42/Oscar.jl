@@ -10,7 +10,7 @@ function gcdx5(a::Union{AbsSimpleNumFieldOrderQuoRingElem}, b::Union{AbsSimpleNu
         return (zero(QuotS), one(QuotS), zero(QuotS), zero(QuotS), one(QuotS))
     end
     g = gen(lift(a)*S + lift(b)*S, QuotS)
-    ann = annihilator(g)
+    ann = annihilator_lip(g)
     #println(string("a:", a, ", b:", b, ", g:", g))
     v_0 = div(a,g)
     v = v_0
@@ -41,7 +41,8 @@ function gcdx5(a::Union{AbsSimpleNumFieldOrderQuoRingElem}, b::Union{AbsSimpleNu
     return (g, s, t, -u, v)
 end
 
-function annihilator(a::Union{AbsSimpleNumFieldOrderQuoRingElem})
+function annihilator_lip(a::Union{AbsSimpleNumFieldOrderQuoRingElem})
+    
     QuotS = parent(a)
     S = base_ring(QuotS)
     d = degree(S)
@@ -150,37 +151,42 @@ function strong_echelon_form_lip(A::MatrixElem{<:RingElem})
 
     #step 2) if n <= m augment with m+1-n zero rows
     if n <= m
-        M_ = zero_matrix(R, m+1, m)
-        M_[1:n,1:m] = M
-        M = M_
+        M = [M; zero_matrix(R, m+1-n, m)]
+        # M_ = zero_matrix(R, m+1, m)
+        # M_[1:n,1:m] = M
+        # M = M_
     end
 
     #step 3) sort the rows such that condition (1) of a strong echelon form is satisfied.
-    for i in 1:m
-        #it = 0
-        col_pivot = 0
-        while col_pivot <= m && col_pivot != i
-            col_pivot = i
-            #find column index of pivot element in row i
-            while col_pivot <= m && iszero(M[i,col_pivot])
-                col_pivot = col_pivot + 1
-            end
-            #if row i is not zero and col_pivot is not i, then swap row i and col_pivot
-            if col_pivot <= m && col_pivot != i
-                swap_rows!(M,i,col_pivot)
-                # it = it+1
-                # if it > m+1
-                #    error("Beim Zeilen Tauschen passt was nicht...")
-                # end
-            end
-        end
+    piv_cols = pivot_columns(M)
+    for i in length(piv_cols):-1:1
+        swap_rows!(M,i,piv_cols[i])
     end
+    # for i in 1:m
+    #     #it = 0
+    #     col_pivot = 0
+    #     while col_pivot <= m && col_pivot != i
+    #         col_pivot = i
+    #         #find column index of pivot element in row i
+    #         while col_pivot <= m && iszero(M[i,col_pivot])
+    #             col_pivot = col_pivot + 1
+    #         end
+    #         #if row i is not zero and col_pivot is not i, then swap row i and col_pivot
+    #         if col_pivot <= m && col_pivot != i
+    #             swap_rows!(M,i,col_pivot)
+    #             # it = it+1
+    #             # if it > m+1
+    #             #    error("Beim Zeilen Tauschen passt was nicht...")
+    #             # end
+    #         end
+    #     end
+    # end
 
     #step 4) do some linear combinations in order to ensure condition (2) of a strong echelon form. This step is only relevant, if R has zero divisors.
     for j in 1:m
         #duplicate the j-th row into the m+1-th row and multiply the m+1-th row with an annihilator of the pivot element. 
         #if M[j,j] != 0
-            M[m+1,1:m] = annihilator(M[j,j]).*M[j,1:m]
+            M[m+1,1:m] = annihilator_lip(M[j,j]).*M[j,1:m]
         #else
         #    M[m+1,1:m] = M[j,1:m]
         #end
@@ -194,23 +200,36 @@ function strong_echelon_form_lip(A::MatrixElem{<:RingElem})
 end
 
 function strong_echelon_form_lip(A::MatrixElem{<:FieldElem})
+    K = parent(A[1,1])
     m = ncols(A)
-    #Compute an echelon form of A
-    M = echelon_form(A)
-    #Sort the rows such that condition (1) of a strong echelon form is satisfied.
-    for i in 1:m
-        col_pivot = 0
-        while col_pivot <= m && col_pivot != i
-            col_pivot = i
-            while col_pivot <= m && iszero(M[i,col_pivot])
-                col_pivot = col_pivot + 1
-            end
-            if col_pivot <= m && col_pivot != i
-                swap_rows!(M,i,col_pivot)
-            end
-        end
+    n = nrows(A)
+
+    #Compute an echelon form M of A and ensures, that M has at least m rows.
+    if n < m
+        M = [echelon_form(A); zero_matrix(K, m-n, m)]
+    else 
+        M = echelon_form(A)
     end
-    return M
+
+    #Sort the rows such that all pivots are on the diagonal in order to satisfy condition (1) of a strong echelon form.
+    piv_cols = pivot_columns(M)
+    for i in length(piv_cols):-1:1
+        swap_rows!(M,i,piv_cols[i])
+        # col_pivot = 0
+        # while col_pivot <= m && col_pivot != i
+        #     col_pivot = i
+        #     while col_pivot <= m
+        #         col_pivot = col_pivot + 1
+        #         if !iszero(M[i,col_pivot])
+                    
+        #         end
+        #     end
+        #     if col_pivot <= m && col_pivot != i
+                
+        #     end
+        # end
+    end
+    return M[1:m,1:m]
 end
 
 
@@ -414,11 +433,12 @@ function gcdx5(a::RingElem, b::RingElem)
     return (r_old, U[1,1], U[1,2], U[2,1], U[2,2])
 end
 
-function annihilator(a::RingElem)
+#Funktion hat Unterstrich, da howell_form(...) in OSCAR versehentlich darauf zugreift, aka meine Funktion eine andere annihilator Funktion überschreibt
+function annihilator_(a::RingElem)
     return zero(parent(a))
 end
 
-function annihilator(a::ResElem)
+function annihilator_(a::ResElem)
     QuotS = parent(a)
     S = base_ring(QuotS)
     d = degree(S)
@@ -517,33 +537,41 @@ function coeff_quo(f::AbstractAlgebra.Generic.RationalFunctionFieldElem{QQFieldE
     end
 end
 
-function shifted_popov(A::MatrixElem{T}, a::Vector{Int}, b::Vector{Int}) where {T <: AbstractAlgebra.Generic.RationalFunctionFieldElem{QQFieldElem, QQPolyRingElem}}
+function coeff_ext(f::QQPolyRingElem, idx::Int)
+    if idx < 0
+        return 0
+    else 
+        return coeff(f, idx)
+    end
+end
 
+function shifted_popov(A::MatrixElem{QQPolyRingElem}, a::Vector{Int}, b::Vector{Int})
     K = parent(A[1,1])
     y = gen(K)
     n = nrows(A)
     m = ncols(A)
     s = m + n
-    d = maximum([degree(numerator(A[i,j])) for i in 1:n, j in 1:m])
+    d = maximum([degree(A[i,j]) for i in 1:n, j in 1:m])
     #a = zeros(Int, m)
 
     g = one(K)
     sigma = zeros(Int, n)
     mu = zeros(Int, s)
-    gamma_star = [rowdeg(A*diagonal_matrix(K, [y^(b[i]) for i in 1:m]), k) for k in 1:n]
+    gamma_star = [maximum(degree(A[i,j]) + b[j] for j in 1:m) for i in 1:n]
     M = identity_matrix(K, s)
     R = [deepcopy(A) -identity_matrix(K, n)]
     N = d*min(n,m) + maximum(a) - minimum(b)
     nvec = vcat(b + [N for i in 1:m], a)
     L = Int[]
-
-    iter = 0
+    iter = 1
     while length(L) != m
-        println(iter)
+        
+        #println(iter)
+        #Main.@infiltrate
         #Initialization of variables
         j = argmax([gamma_star[i]-sigma[i] for i in 1:n])
-        #r = [R[j,l](0) for l in 1:s]
-        r = [coeff_quo(R[j,l], 0) for l in 1:s]
+        r = [R[j,l](0) for l in 1:s]
+        #r = [coeff_quo(R[j,l], 0) for l in 1:s]
         Lambda = Int[]
         for l in 1:s
             if !is_zero(r[l])
@@ -551,69 +579,96 @@ function shifted_popov(A::MatrixElem{T}, a::Vector{Int}, b::Vector{Int}) where {
             end
         end
 
-        #if is_empty(Lambda)
+        if !is_empty(Lambda)
+            pi = 0
+            diff = maximum([nvec[l] - mu[l] for l in Lambda])
+            for l in Lambda
+                if nvec[l] - mu[l] == diff
+                    pi = l
+                    break
+                end
+            end
+            p = [coeff_ext(M[l,pi], mu[l]-1) for l in 1:s]
 
-        pi = 0
-        diff = maximum([nvec[l] - mu[l] for l in Lambda])
-        for l in Lambda
-            if nvec[l] - mu[l] == diff
-                pi = l
+            #Check stopping criterion
+            for l in 1:s
+                if is_zero(R[:,l]) && !(l in L || l in Lambda) 
+                    push!(L, l)
+                end
+            end
+            if length(L) == m
                 break
             end
-        end
-        p = [coeff_quo(M[l,pi], mu[l]-1) for l in 1:s]
 
-        #Check stopping criterion
-        for l in 1:s
-            if is_zero(R[:,l]) && !(l in L || l in Lambda) 
-                push!(L, l)
+            #@infiltrate
+            #Increase order for l = 1,...,m , l != pi
+            for l in 1:s # oder 1:m?
+                #println(string("l = ", l))
+                if l == pi
+                    continue
+                end
+                M[:,l] = QQ(1//g).*(r[pi].*M[:,l] - r[l].*M[:,pi])
+                R[:,l] = QQ(1//g).*(r[pi].*R[:,l] - r[l].*R[:,pi]) 
             end
+            #println("Checkpoint 1")
+            #@infiltrate
+            #Increase order for l = pi and adjust degree constraints
+            M[:,pi] = QQ(1//g).*((y*r[pi]).*M[:,pi] - sum(p[l].*M[:,l] for l in 1:s if l != pi))
+            R[:,pi] = QQ(1//g).*((y*r[pi]).*R[:,pi] - sum(p[l].*R[:,l] for l in 1:s if l != pi))
+            
+            #Update variables
+            g = r[pi]
+            mu[pi] = mu[pi] + 1 
         end
-        if length(L) == m
-            break
-        end
-
-        #@infiltrate
-        #Increase order for l = 1,...,m , l != pi
-        for l in 1:s # oder 1:m?
-            #println(string("l = ", l))
-            if l == pi
-                continue
-            end
-            M[:,l] = (1//g).*(r[pi].*M[:,l] - r[l].*M[:,pi])
-            R[:,l] = (1//g).*(r[pi].*R[:,l] - r[l].*R[:,pi]) 
-        end
-        #println("Checkpoint 1")
-        #@infiltrate
-        #Increase order for l = pi and adjust degree constraints
-        M[:,pi] = (1//g).*((y*r[pi]).*M[:,pi] - sum(p[l].*M[:,l] for l in 1:s if l != pi))
-        R[:,pi] = (1//g).*((y*r[pi]).*R[:,pi] - sum(p[l].*R[:,l] for l in 1:s if l != pi))
-
+        
         #Adjust residual in row j
-        R[:,j] = (1//y).*R[:,j]
+        for k in 1:s
+            R[j,k] = R[j,k]/y
+        end
         
         #Update variables
-        g = r[pi]
         sigma[j] = sigma[j] + 1
-        mu[pi] = mu[pi] + 1 
+
 
         #Testing overhead
-        println(L)
+        #println(L)
         iter = iter+1
 
         #@infiltrate
 
-        if iter == 100
-            error("Zu viele Iterationen...")
-        end
+        #if iter == 100
+        #    error("Zu viele Iterationen...")
+        #end
     end
 
     sort!(L)
-    r = n+1 - findfirst(>(m), L)
+    r = m+1 - findfirst(>(m), L)
     H = M[(m+1):(m+n), L]
     U = M[1:m, L]
 
-    return (U, L[1:m], H, L[m+1:m+n])
+
+    return ((1//g)*U, (1//g)*H, L, mu)
+end
+
+function hnf_as_shifted_popov(A::MatrixElem{T}) where {T <: PolyRingElem}
+    M = deepcopy(A)
+    n = nrows(A)
+    m = ncols(A)
+    d = maximum([degree(A[i,j]) for i in 1:n, j in 1:m])
+    bound = d*min(n,m)
+    a = [(n-i)*bound for i in 1:n]
+    b = zeros(Int, m)
+
+    for i in 1:n
+        for j in 1:m
+            for k in 0:d
+                if !is_one(denominator(coeff(M[i,j], k)))
+                    multiply_column!(M, denominator(coeff(M[i,j], k)), j)
+                end
+            end
+        end
+    end
+    return shifted_popov(M, a, b)[2]
 end
 
 
@@ -622,6 +677,263 @@ end
 
 
 
+
+# NEW ANSATZ FOR CALCULATING HNF OF MATRICES OVER QUOTIENT RINGS LIKE Qx/x^k
+
+function strong_echelon_form_lip_quotient(A::MatrixElem{EuclideanRingResidueRingElem{T}}, f::T, e::Int) where {T <: PolyRingElem}
+
+    if is_one(e)
+        return strong_echelon_form_lip_quotient_field(A, f)
+    end
+
+    R = parent(A[1,1])
+    Kx = base_ring(R)
+    K = base_ring(Kx)
+    x = gen(R)
+    #Main.@infiltrate
+    n = nrows(A)
+    m = ncols(A)
+    B = basis_change_matrix(f, e)
+    B_inv = inv(B)
+    d = degree(f)
+    #Main.@infiltrate
+
+    #Each entry of A will be identified with a de x de - matrix. 
+    H = zero_matrix(K, d*e*n, d*e*m)
+
+    #calculating the first d rows of each de-block-row 
+    for i in 1:n
+        for j in 1:m 
+            a = A[i,j]
+            H[d*e*(i-1)+1, (j-1)*d*e+1:j*d*e] = [coeff(lift(a), l) for l in 0:d*e-1]*B_inv
+            for k in 2:d 
+                a = a*x
+                H[d*e*(i-1)+k, (j-1)*d*e+1:j*d*e] = [coeff(lift(a), l) for l in 0:d*e-1]*B_inv
+            end
+        end
+    end
+    #Main.@infiltrate
+    #all other rows in each de-matrix-block are a shift of the first d ones. 
+    for i in 1:n
+        for j in 1:m
+            for k in 1:e-1
+                for l in k:e-1
+                    H[d*e*(i-1)+d*k+1:d*e*(i-1)+d*k+d, d*e*(j-1)+d*l+1:d*e*(j-1)+d*l+d] = H[d*e*(i-1)+1:d*e*(i-1)+d, d*e*(j-1)+d*(l-k)+1:d*e*(j-1)+d*(l-k)+d]
+                end
+            end
+        end
+    end
+
+    #calculating the strong echelon form of the big matrix H over field K
+    E = strong_echelon_form_lip(H)
+    #Main.@infiltrate
+
+    #finding the first non-zero row in each de-matrix-block
+    pivs = zeros(Int, m)
+    for i in 1:m
+        for k in 0:e
+            if k == e
+                pivs[i] = d*e*i
+                break
+            end
+            if !is_zero(E[d*e*(i-1)+d*k+1, d*e*(i-1)+d*k+1])
+                pivs[i] = d*e*(i-1)+d*k+1
+                break
+            end
+        end
+    end
+
+    #constructing a K-basis of R of the special form x^i*f^j
+    # v = Vector{EuclideanRingResidueRingElem{T}}(undef, d*e)
+    # for i in 0:e-1
+    #     if i == 0
+    #         v[1] = one(R)
+    #     else 
+    #         v[d*i+1] = v[(d-1)*i+1]*f
+    #     end
+    #     for j in 2:d
+    #         v[d*i+j] = v[d*i+j-1]*x
+    #     end
+    # end
+    #Main.@infiltrate
+    #Applying U (of my theorem) to H to get a SEF of A
+    SEF = zero_matrix(R, m, m)
+    for i in 1:m
+        for j in 1:m
+            E[pivs[i], d*e*(j-1)+1:d*e*j] = E[pivs[i], d*e*(j-1)+1:d*e*j]*B
+            SEF[i,j] = R(Kx(E[pivs[i], d*e*(j-1)+1:d*e*j]))
+        end
+    end
+
+    return SEF
+end
+
+function strong_echelon_form_lip_quotient_field(A::MatrixElem{EuclideanRingResidueRingElem{T}}, f::T) where {T <: PolyRingElem}
+    R = parent(A[1,1])
+    B = gens(R)
+    Kx = base_ring(R)
+    K = base_ring(Kx)
+    x = gen(R)
+    #Main.@infiltrate
+    n = nrows(A)
+    m = ncols(A)
+    d = degree(f)
+    #Main.@infiltrate
+
+    #Each entry of A will be identified with a d x d - matrix. 
+    H = zero_matrix(K, d*n, d*m)
+    
+    for i in 1:n
+        for j in 1:m 
+            a = A[i,j]
+            a_lift = lift(a)
+            for l in 1:d 
+                H[d*(i-1)+1, d*(j-1)+l] = coeff(a_lift, l-1) 
+            end
+            for k in 2:d 
+                a = a*x
+                a_lift = lift(a)
+                for l in 1:d
+                    H[d*(i-1)+k, d*(j-1)+l] = coeff(a_lift, l-1)
+                end
+            end
+        end
+    end
+
+    #calculating the strong echelon form of the big matrix H over field K
+    E = strong_echelon_form_lip(H)
+    #Main.@infiltrate
+    
+    
+    #Applying U (of my theorem) to H to get a SEF of A
+    SEF = zero_matrix(R, m, m)
+    for i in 1:m
+        for j in 1:m
+            SEF[i,j] = R(Kx(E[d*(i-1)+1, d*(j-1)+1:d*j]))
+        end
+    end
+
+    return SEF
+end
+
+function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
+    Kx = base_ring(A)
+    n = nrows(A)
+    m = ncols(A)
+    
+    #find m linear independent rows
+    indices = Int[]
+    while(length(indices) != m)
+        for i in 1:n
+            if rank_interpolation_mc(A[vcat(indices,[i]),:], 0.01) > length(indices)
+                push!(indices, i)
+            end
+            if length(indices) == m
+                break
+            end
+        end
+    end
+    
+    f = det(A[indices,:])
+    g = gen(Kx)
+    fac = factor(f)
+    #sefs = Vector{MatrixElem{EuclideanRingResidueRingElem{T}}}(undef, length(fac)+1)
+    sefs = MatrixElem{EuclideanRingResidueRingElem{T}}[]
+
+    for i in 0:degree(f)
+        if !any(p -> p.first == g, fac.arr)
+            R, phi = residue_ring(Kx, g)
+            A_p = map_entries(x -> phi(x), A)
+            push!(sefs, strong_echelon_form_lip_quotient(A_p, g, 1))
+            break
+        end
+        g = g+1
+    end
+
+    # calculating all quotient sefs
+    for p in fac
+        R, phi = residue_ring(Kx, p.first^(p.second))
+        A_p = map_entries(x -> phi(x), A)
+        push!(sefs, strong_echelon_form_lip_quotient(A_p, p.first, p.second))
+    end
+
+    #Main.@infiltrate
+    # reconstructing the sef over Kx/(fg) via chinese remainder
+    R, phi = residue_ring(Kx, f*g)
+    A_f = zero_matrix(R,m,m)
+    for i = 1:m
+        for j = i:m
+            V = vcat([g], [p.first^(p.second) for p in fac])
+            U = [lift(sef[i,j]) for sef in sefs]
+            #Main.@infiltrate
+            A_f[i,j] = crt([lift(sef[i,j]) for sef in sefs],vcat([g], [p.first^(p.second) for p in fac]))
+        end
+    end
+    #Main.@infiltrate
+    # for i = 1:m
+    #     a = lift(A_f[i,i])
+    #     for k in 1:length(sefs)-1
+    #         e = valuation_((sefs[k+1])[i,i], fac.arr[k].first, fac.arr[k].second)
+    #         a = div(a, fac.arr[k].first^e)
+    #         if e == fac.arr[k].second
+                
+    #         end
+    #     end
+    #     Main.@infiltrate
+    #     A_f[i,:] = inv(phi(a)).*A_f[i,:]# hier diagonale korrigieren
+    # end
+    for i = 1:m
+        a = lift(A_f[i,i])
+        for k in 1:length(sefs)-1
+            e = valuation(a, fac.arr[k].first)
+            a = div(a, fac.arr[k].first^e)
+        end
+        #Main.@infiltrate
+        A_f[i,:] = inv(phi(a)).*A_f[i,:]# hier diagonale korrigieren
+    end
+
+    H = map_entries(x -> lift(x), A_f)
+
+    for j in 1:m, i in j:-1:1
+        if i == j
+            H[i,i] = H[i,i]/leading_coefficient(H[i,i])
+        else
+            #Main.@infiltrate
+            c = div(H[i,j],H[j,j])
+            H[i,j:m] = H[i,j:m]-c.*H[j,j:m]
+        end
+    end
+    return [H; zero_matrix(Kx, n-m, m)]
+end
+
+
+function basis_change_matrix(f::PolyRingElem, e::Int)
+    K = base_ring(f)
+    d = degree(f)
+    B = zero_matrix(K,d*e,d*e)
+    g = f
+
+    B[1:d,1:d] = identity_matrix(K, d)
+
+    for i in 1:e-1
+        for j in 1:d*i+1
+            B[d*i+1, j] = coeff(g, j-1)
+            for k in 2:d
+                B[d*i+k, j+k-1] = B[d*i+1, j]
+            end
+        end
+        g = g*f
+    end
+    return B
+end
+
+
+
+function profiling_loop(A::MatrixElem{T}) where {T <: PolyRingElem}
+    for i in 1:50
+        hnf_lip_full_rank(A)
+    end
+end
 
 
 
@@ -652,3 +964,73 @@ function _hnf(A::MatrixElem{T}) where {T <: PolyRingElem}
     end
     return M
 end
+
+#Assuming that r is an element of a special principal ideal ring Kx/p^e
+function valuation_(r::EuclideanRingResidueRingElem{T}, p::T, e::Int) where {T <: PolyRingElem}
+    for i in 0:e
+        if is_zero(r)
+            return e-i
+        end
+        r = r*p
+    end
+    return 0
+end
+
+function strong_echelon_form_lip_quo_x_pot(A::MatrixElem{EuclideanRingResidueRingElem{T}}) where {T <: PolyRingElem}
+    R = parent(A[1,1])
+    #Main.@infiltrate
+    n = nrows(A)
+    m = ncols(A)
+    B = gens(R)
+    d = degree(f)
+    #Main.@infiltrate
+    H = zero_matrix(QQ, n, d*m)
+    for i in 1:n
+        for j in 1:m 
+            for k in 0:d-1 
+                H[i, (j-1)*d+k+1] = coeff(lift(A[i,j]), k)
+            end
+        end
+    end
+    
+    HH = zero_matrix(QQ, d*n, d*m)
+    for i in 1:n
+        for j in 1:m
+            for k in 1:d
+                for l in k:d
+                    #println((j-1)*d+l+(k-1))
+                    HH[(i-1)*d+k, (j-1)*d+l] = H[i,(j-1)*d+l-(k-1)]
+                end
+            end
+        end
+    end
+    #Main.@infiltrate
+    E = strong_echelon_form_lip(HH)
+    #Main.@infiltrate
+    pivs = zeros(Int, m)
+    for i in 1:m
+        for k in 1:d+1
+            if k == d+1
+                pivs[i] = d*i
+                break
+            end
+            if !is_zero(E[d*(i-1)+k, :])
+                pivs[i] = d*(i-1)+k
+                break
+            end
+        end
+    end
+
+    HR = zero_matrix(R, m, m)
+    for i in 1:m
+        for j in 1:m
+            for k in 1:d
+                HR[i,j] = HR[i,j] + B[k]*E[pivs[i], k+d*(j-1)]
+            end
+        end
+    end
+
+
+    return HR
+end
+
