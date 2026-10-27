@@ -177,26 +177,33 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
                     continue
                 end
 
-                pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
-                local A
-                try
-                    A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
-                catch err
-                    @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
-                    continue
-                end
+                # pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
+                # local A
+                # try
+                #     A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
+                # catch err
+                #     @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
+                #     continue
+                # end
 
-                local t1, t2
-                try
-                    t1 = mean_runtime(hnf, A, budget)
-                    GC.gc(true)
-                    t2 = mean_runtime(hnf_lip_full_rank, A, budget)
-                    GC.gc(true)
-                catch err
-                    @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
-                    flush(io)                       # nichts verlieren bei Abbruch
-                    close(io)
-                    return filepath
+                # local t1, t2
+                # try
+                #     t1 = mean_runtime(hnf, A, budget)
+                #     GC.gc(true)
+                #     t2 = mean_runtime(hnf_lip_full_rank, A, budget)
+                #     GC.gc(true)
+                # catch err
+                #     @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
+                #     flush(io)                       # nichts verlieren bei Abbruch
+                #     close(io)
+                #     return filepath
+                # end
+                status, t1, t2 = run_case(n, m, coeff, maxdeg, d, e, r, budget)
+                if status != :ok
+                    open("skipped.log", "a") do f
+                        println(f, "n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
+                    end
+                    continue
                 end
 
                 for v in (n, m, coeff, maxdeg, d, e, r)
@@ -211,6 +218,48 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
         close(io)
     end
     return filepath
+end
+
+const MEM_LIMIT_KB = 6 * 1024^2    # 6 GiB, deutlich unter dem OOM-Limit deiner Maschine
+const HARD_TIMEOUT = 300.0         # Sekunden pro Fall (inkl. Start/Kompilierung)
+
+function rss_kb(pid)
+    try
+        for l in eachline("/proc/$pid/status")
+            startswith(l, "VmRSS:") && return parse(Int, split(l)[2])
+        end
+    catch
+    end
+    return 0
+end
+
+function run_case(n, m, coeff, maxdeg, d, e, r, budget)
+    out = tempname()
+    cmd = `$(Base.julia_cmd()) --project=$(Base.active_project()) worker.jl
+           $n $m $coeff $maxdeg $d $e $r $budget`
+    proc = run(pipeline(cmd; stdout = out, stderr = devnull); wait = false)
+    pid = getpid(proc)
+    t0 = time()
+    status = :ok
+    while process_running(proc)
+        if rss_kb(pid) > MEM_LIMIT_KB
+            status = :oom;     kill(proc, Base.SIGKILL); break
+        elseif time() - t0 > HARD_TIMEOUT
+            status = :timeout; kill(proc, Base.SIGKILL); break
+        end
+        sleep(0.2)
+    end
+    wait(proc)
+    t1 = t2 = NaN
+    for l in eachline(out)
+        startswith(l, "t1=") && (t1 = parse(Float64, l[4:end]))
+        startswith(l, "t2=") && (t2 = parse(Float64, l[4:end]))
+    end
+    rm(out; force = true)
+    if status == :ok && !(isfinite(t1) && isfinite(t2))
+        status = :failed        # Worker ist mit Fehler beendet (z. B. Exception)
+    end
+    return status, t1, t2
 end
 
 # ---------- Visualisierung der Daten als Tabelle - HTML ----------
