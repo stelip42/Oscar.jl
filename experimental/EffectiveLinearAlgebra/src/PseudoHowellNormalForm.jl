@@ -820,7 +820,7 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
     Kx = base_ring(A)
     n = nrows(A)
     m = ncols(A)
-    
+    #Main.@infiltrate
     #find m linear independent rows
     indices = Int[]
     while(length(indices) != m)

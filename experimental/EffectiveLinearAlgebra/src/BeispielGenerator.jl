@@ -156,7 +156,7 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
                          r_range::Vector{Int};
                          budget::Float64 = 1.0, seed = nothing)
 
-    filepath = expanduser("~/OSCAR_Testdaten/hnf_full_rank_meins_vs_OSCAR.bin")   # <-- manuell anpassen
+    filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR.bin")   # <-- manuell anpassen
 
     seed === nothing || Random.seed!(seed)
     Kx, _ = polynomial_ring(QQ, :x)
@@ -177,34 +177,35 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
                     continue
                 end
 
-                # pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
-                # local A
-                # try
-                #     A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
-                # catch err
-                #     @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
-                #     continue
-                # end
-
-                # local t1, t2
-                # try
-                #     t1 = mean_runtime(hnf, A, budget)
-                #     GC.gc(true)
-                #     t2 = mean_runtime(hnf_lip_full_rank, A, budget)
-                #     GC.gc(true)
-                # catch err
-                #     @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
-                #     flush(io)                       # nichts verlieren bei Abbruch
-                #     close(io)
-                #     return filepath
-                # end
-                status, t1, t2 = run_case(n, m, coeff, maxdeg, d, e, r, budget)
-                if status != :ok
-                    open("skipped.log", "a") do f
-                        println(f, "n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
-                    end
+                pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
+                local A
+                try
+                    A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
+                catch err
+                    @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
                     continue
                 end
+
+                local t1, t2
+                try
+                    t1 = mean_runtime(hnf, A, budget)
+                    GC.gc(true)
+                    t2 = mean_runtime(hnf_lip_full_rank, A, budget)
+                    GC.gc(true)
+                catch err
+                    @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
+                    flush(io)                       # nichts verlieren bei Abbruch
+                    close(io)
+                    return filepath
+                end
+                # status, t1, t2 = run_case(n, m, coeff, maxdeg, d, e, r, budget)
+                # if status != :ok
+                #     println("method_analysis: n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
+                #     open("skipped.log", "a") do f
+                #         println(f, "n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
+                #     end
+                #     continue
+                # end
 
                 for v in (n, m, coeff, maxdeg, d, e, r)
                     write(io, Int32(v))
@@ -235,10 +236,14 @@ end
 
 function run_case(n, m, coeff, maxdeg, d, e, r, budget)
     out = tempname()
-    cmd = `$(Base.julia_cmd()) --project=$(Base.active_project()) worker.jl
-           $n $m $coeff $maxdeg $d $e $r $budget`
-    proc = run(pipeline(cmd; stdout = out, stderr = devnull); wait = false)
+    #cmd = `$(Base.julia_cmd()) --project=$project worker.jl
+    #       $n $m $coeff $maxdeg $d $e $r $budget`
+    project = normpath(joinpath(homedir(), "Oscar.jl"))
+    worker = joinpath(@__DIR__, "worker.jl")
+    cmd = `$(Base.julia_cmd()) --project=$project $worker $n $m $coeff $maxdeg $d $e $r $budget`
+    proc = run(pipeline(cmd; stdout = out, stderr = stderr); wait = false)
     pid = getpid(proc)
+    println("run-case n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r")
     t0 = time()
     status = :ok
     while process_running(proc)
@@ -250,6 +255,7 @@ function run_case(n, m, coeff, maxdeg, d, e, r, budget)
         sleep(0.2)
     end
     wait(proc)
+    #Main.@infiltrate
     t1 = t2 = NaN
     for l in eachline(out)
         startswith(l, "t1=") && (t1 = parse(Float64, l[4:end]))
