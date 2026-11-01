@@ -154,9 +154,9 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
                          coeff_range::Vector{Int}, maxdeg_range::Vector{Int},
                          d_range::Vector{Int}, e_range::Vector{Int},
                          r_range::Vector{Int};
-                         budget::Float64 = 1.0, seed = nothing)
+                         budget::Float64 = 5.0, seed = nothing)
 
-    filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR.bin")   # <-- manuell anpassen
+    filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR_2.bin")   # <-- manuell anpassen
 
     seed === nothing || Random.seed!(seed)
     Kx, _ = polynomial_ring(QQ, :x)
