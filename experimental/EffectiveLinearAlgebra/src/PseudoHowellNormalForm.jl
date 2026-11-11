@@ -232,7 +232,25 @@ function strong_echelon_form_lip(A::MatrixElem{<:FieldElem})
     return M[1:m,1:m]
 end
 
+function strong_echelon_form_lip_with_trafo(A::MatrixElem{<:FieldElem})
+    K = parent(A[1,1])
+    m = ncols(A)
+    n = nrows(A)
 
+    #Compute an echelon form M of A and ensures, that M has at least m rows.
+    if n < m
+        M = [echelon_form([A identity_matrix(K, n)]) zero_matrix(K, n, m-n); zero_matrix(K, m-n, m+n) identity_matrix(K, m-n)]
+    else 
+        M = echelon_form([A identity_matrix(K, n)])
+    end
+
+    #Sort the rows such that all pivots are on the diagonal in order to satisfy condition (1) of a strong echelon form.
+    piv_cols = pivot_columns(M[:,1:m])
+    for i in length(piv_cols):-1:1
+        swap_rows!(M,i,piv_cols[i])
+    end
+    return M[1:m,1:m], M[:,m+1:ncols(M)]
+end
 
 
 
@@ -799,7 +817,7 @@ function strong_echelon_form_lip_quotient_field(A::MatrixElem{EuclideanRingResid
             end
         end
     end
-
+    
     #calculating the strong echelon form of the big matrix H over field K
     E = strong_echelon_form_lip(H)
     #Main.@infiltrate
@@ -823,8 +841,11 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
     #Main.@infiltrate
     #find m linear independent rows
     indices = Int[]
+    rounds = 0
     while(length(indices) != m)
+        #Main.@infiltrate
         for i in 1:n
+            #Main.@infiltrate
             if rank_interpolation_mc(A[vcat(indices,[i]),:], 0.01) > length(indices)
                 push!(indices, i)
             end
@@ -832,24 +853,32 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
                 break
             end
         end
+        rounds+= 1
+        if rounds > 5
+            #Main.@infiltrate
+            if rank(A) < m
+                error("Matrix hat nicht vollen Spaltenrang...")
+            end
+        end
     end
     
     f = det(A[indices,:])
-    g = gen(Kx)
+    #g = gen(Kx)
     fac = factor(f)
     #sefs = Vector{MatrixElem{EuclideanRingResidueRingElem{T}}}(undef, length(fac)+1)
     sefs = MatrixElem{EuclideanRingResidueRingElem{T}}[]
 
-    for i in 0:degree(f)
-        if !any(p -> p.first == g, fac.arr)
-            R, phi = residue_ring(Kx, g)
-            A_p = map_entries(x -> phi(x), A)
-            push!(sefs, strong_echelon_form_lip_quotient(A_p, g, 1))
-            break
-        end
-        g = g+1
-    end
+    # for i in 0:degree(f)
+    #     if !any(p -> p.first == g, fac.arr)
+    #         R, phi = residue_ring(Kx, g)
+    #         A_p = map_entries(x -> phi(x), A)
+    #         push!(sefs, strong_echelon_form_lip_quotient(A_p, g, 1))
+    #         break
+    #     end
+    #     g = g+1
+    # end
 
+    #Main.@infiltrate
     # calculating all quotient sefs
     for p in fac
         R, phi = residue_ring(Kx, p.first^(p.second))
@@ -859,14 +888,12 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
 
     #Main.@infiltrate
     # reconstructing the sef over Kx/(fg) via chinese remainder
-    R, phi = residue_ring(Kx, f*g)
+    R, phi = residue_ring(Kx, f)
     A_f = zero_matrix(R,m,m)
     for i = 1:m
         for j = i:m
-            V = vcat([g], [p.first^(p.second) for p in fac])
-            U = [lift(sef[i,j]) for sef in sefs]
             #Main.@infiltrate
-            A_f[i,j] = crt([lift(sef[i,j]) for sef in sefs],vcat([g], [p.first^(p.second) for p in fac]))
+            A_f[i,j] = crt([lift(sef[i,j]) for sef in sefs],[p.first^(p.second) for p in fac])
         end
     end
     #Main.@infiltrate
@@ -884,19 +911,38 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
     # end
     for i = 1:m
         a = lift(A_f[i,i])
-        for k in 1:length(sefs)-1
+        if is_zero(a) || is_zero(A_f[i,i])
+            #Main.@infiltrate
+            continue
+        end
+        b = one(Kx)
+        h = f
+        #Main.@infiltrate
+        for k in 1:length(sefs)
             e = valuation(a, fac.arr[k].first)
             a = div(a, fac.arr[k].first^e)
+            if e > fac.arr[k].second
+                error("besagter Fall, dass e > fac.arr[k].second, tritt ein...")
+                b *= fac.arr[k].first^(e-fac.arr[k].second)
+                h = div(h, fac.arr[k].first^fac.arr[k].second)
+            end
+        end
+        if !is_one(b)
+            _, phi_h = residue_ring(Kx, h)
+            b = lift(inv(phi_h(b)))
         end
         #Main.@infiltrate
-        A_f[i,:] = inv(phi(a)).*A_f[i,:]# hier diagonale korrigieren
+        A_f[i,:] = (inv(phi(a))*phi(b)).*A_f[i,:]# hier diagonale korrigieren
     end
 
     H = map_entries(x -> lift(x), A_f)
 
     for j in 1:m, i in j:-1:1
         if i == j
-            H[i,i] = H[i,i]/leading_coefficient(H[i,i])
+            if is_zero(H[i,i])
+                H[i,i] = f
+            end
+            H[i,i:m] = (1/leading_coefficient(H[i,i])).*H[i,i:m]
         else
             #Main.@infiltrate
             c = div(H[i,j],H[j,j])
@@ -906,6 +952,52 @@ function hnf_lip_full_rank(A::MatrixElem{T}) where {T <: PolyRingElem}
     return [H; zero_matrix(Kx, n-m, m)]
 end
 
+function hnf_lip(A::MatrixElem{T}) where {T <: PolyRingElem}
+    n = nrows(A)
+    m = ncols(A)
+    r = rank_interpolation(A)
+    Kx = base_ring(A)
+
+    if r == m
+        return hnf_lip_full_rank(A)
+    end
+    
+    #find rank(A) linear independent columns
+    c_indices = Int[]
+    for i in 1:m
+        if rank(A[:,vcat(c_indices,[i])]) > length(c_indices)
+            push!(c_indices, i)
+        end
+        if length(c_indices) == r
+            break
+        end
+    end
+
+    #find rank(A) linear independent rows
+    r_indices = Int[]
+    for i in 1:n
+        if rank(A[vcat(r_indices,[i]),c_indices]) > length(r_indices)
+            push!(r_indices, i)
+        end
+        if length(r_indices) == r
+            break
+        end
+    end
+    r_indices_compl = setdiff(1:n,r_indices)
+    A1 = A[:,c_indices]
+    H1 = hnf_lip_full_rank(A1)
+    A2 = zero_matrix(Kx,n,n-r)
+    for j in 1:n-r
+        A2[r_indices_compl[j],j] = one(Kx)
+    end
+    H2 = [zero_matrix(Kx,r,n-r); identity_matrix(Kx, n-r)]
+    #Main.@infiltrate
+    A_quad = [A1 A2]
+    H = [H1 H2]
+    U = solve_lip(A_quad,H)
+    #Main.@infiltrate
+    return U*A
+end
 
 function basis_change_matrix(f::PolyRingElem, e::Int)
     K = base_ring(f)
@@ -927,12 +1019,73 @@ function basis_change_matrix(f::PolyRingElem, e::Int)
     return B
 end
 
-
-
 function profiling_loop(A::MatrixElem{T}) where {T <: PolyRingElem}
     for i in 1:50
         hnf_lip_full_rank(A)
     end
+end
+
+
+# SOLVER FOR EQUATIONS OVER UNIVARIATE POLYNOMIAL RINGS
+
+function solve_lip(A::MatrixElem{T}, B::MatrixElem{T}; side::Symbol = :left) where {T <: PolyRingElem}
+    n = nrows(A)
+    Kx = base_ring(A)
+
+    if n != ncols(A) | n != nrows(B) | n != ncols(B)
+        error("Input matrices don't have the same size or are not quadratic")
+    end
+    
+    X = zero_matrix(Kx, n, n)
+    for i in 1:n
+        X[i,:] = solve_lip(A, B[i,:]; side)
+    end
+    return X
+end
+
+function solve_lip(A::MatrixElem{T}, b::Vector{T}; side::Symbol = :left) where {T <: PolyRingElem}
+    n = nrows(A)
+    Kx = base_ring(A)
+    K = base_ring(Kx)
+
+
+    if n != ncols(A) | length(b) != n
+        error("Input matrix A is not quadratic or number of entries of input vector b is not equal to the number of rows of A")
+    end
+
+    f = det(A)
+    d = degree(f)
+    if is_zero(f)
+        error("Input matrix is not invertible")
+    end
+
+    #The main idea comes from Dixon - rational reconstruction
+    #--------------------------------------------------------
+
+    #Find a linear polynomial p with gcd(p,f) = 1
+    p = gen(Kx)
+    while !is_one(gcd(p, f))  
+        p += 1
+    end
+    x_vecs = zero_matrix(K, d, n)
+    A_p_inv = inv(map_entries(x -> evaluate(x, -coeff(p, 0)), A))
+
+    b_i = deepcopy(b)
+    x_vecs[1,:] = map(x -> evaluate(x, -coeff(p, 0)), b)*A_p_inv
+    for i in 2:d
+        b_new = b_i-x_vecs[i-1,:]*A
+        b_i = map(x -> div(x, p), b_new)
+        x_vecs[i,:] = map(x -> evaluate(x, -coeff(p, 0)), b_i)*A_p_inv
+    end
+
+    x = map(Kx, x_vecs[1,:])
+    p_i = one(Kx)
+    for i in 2:d
+        p_i *= p
+        x += p_i.*map(Kx, x_vecs[i,:])
+    end
+    #Main.@infiltrate
+    return x
 end
 
 

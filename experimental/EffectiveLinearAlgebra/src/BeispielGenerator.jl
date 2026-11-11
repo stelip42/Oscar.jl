@@ -1,4 +1,4 @@
-
+using Random
 # ---------- Hilfsfunktionen ----------
 
 # zufälliges normiertes irreduzibles Polynom vom Grad deg, nicht in `avoid`
@@ -46,11 +46,36 @@ end
 
 # ---------- n×m-Matrix mit vollem Spaltenrang ----------
 
-function example_matrix(Kx::PolyRing, n::Int, m::Int, pattern::Vector{Tuple{Int,Int}}, rng::Int, maxdeg::Int)
+# function example_matrix(Kx::PolyRing, n::Int, m::Int, pattern::Vector{Tuple{Int,Int}}, rng::Int, maxdeg::Int)
+#     @assert n >= m >= 1
+#     M, f = matrix_with_det_pattern(Kx, m, pattern, rng, maxdeg)
+#     sigma = rand(symmetric_group(n))
+#     indices = sort!([sigma(i) for i in 1:m])            # Positionen der Minor-Zeilen
+#     A = zero_matrix(Kx, n, m)
+#     k = 0                                               # Anzahl bisher gesetzter Minor-Zeilen
+#     for i in 1:n
+#         if k < m && i == indices[k+1]
+#             k += 1
+#             for j in 1:m
+#                 A[i, j] = M[k, j]
+#             end
+#         elseif k >= 1
+#             # abhängige Zeile: Polynomkombination der bisherigen Minor-Zeilen
+#             scalars = [rand(Kx, -1:0, -rng:rng) for _ in 1:k]
+#             for j in 1:m
+#                 A[i, j] = sum(scalars[c] * M[c, j] for c in 1:k)
+#             end
+#         end                                             # sonst: Nullzeile
+#     end
+#     return A, f, indices
+# end
+
+function example_matrix(Kx::PolyRing, n::Int, m::Int, pattern::Vector{Tuple{Int,Int}}, rng::Int, maxdeg::Int;
+                        seed::Union{Int,Nothing} = nothing)
     @assert n >= m >= 1
+    seed === nothing || Random.seed!(seed)              # Beispiel reproduzierbar machen
     M, f = matrix_with_det_pattern(Kx, m, pattern, rng, maxdeg)
-    sigma = rand(symmetric_group(n))
-    indices = sort!([sigma(i) for i in 1:m])            # Positionen der Minor-Zeilen
+    indices = sort!(randperm(n)[1:m])                   # Positionen der Minor-Zeilen
     A = zero_matrix(Kx, n, m)
     k = 0                                               # Anzahl bisher gesetzter Minor-Zeilen
     for i in 1:n
@@ -141,22 +166,24 @@ const RECORD_FIELDS_FLOAT = (:ratio, :t1, :t2)
 function mean_runtime(f, A, budget::Float64)
     times = Float64[]
     t_start = time_ns()
+    F = deepcopy(A)
     while (time_ns() - t_start) / 1e9 < budget || isempty(times)
         t0 = time_ns()
-        f(A)
+        F = f(A)
         push!(times, (time_ns() - t0) / 1e9)
     end
-    return sum(times) / length(times)
+    return sum(times) / length(times), F
 end
 
 #Analyse der Laufzeit von zwei Funktionen im Vergleich
+
 function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
                          coeff_range::Vector{Int}, maxdeg_range::Vector{Int},
                          d_range::Vector{Int}, e_range::Vector{Int},
-                         r_range::Vector{Int};
+                         r_range::Vector{Int}, filepath::String;
                          budget::Float64 = 5.0, seed = nothing)
 
-    filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR_2.bin")   # <-- manuell anpassen
+    #filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR_2.bin")   # <-- manuell anpassen
 
     seed === nothing || Random.seed!(seed)
     Kx, _ = polynomial_ring(QQ, :x)
@@ -179,40 +206,37 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
 
                 pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
                 local A
+                local s = Int(rand(Int32))                      
                 try
-                    A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
+                    A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg; seed = s)   
                 catch err
-                    @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
+                    @warn "Beispielgenerierung fehlgeschlagen" s n m coeff maxdeg d e r err
                     continue
                 end
 
-                local t1, t2
+                local t1, t2, A1, A2
                 try
-                    t1 = mean_runtime(hnf, A, budget)
+                    t1, A1 = mean_runtime(hnf, A, budget)
                     GC.gc(true)
-                    t2 = mean_runtime(hnf_lip_full_rank, A, budget)
+                    t2, A2 = mean_runtime(hnf_lip_full_rank, A, budget)
                     GC.gc(true)
+                    if A1 != A2
+                        @warn "HNFs sind ungleich, bitte nachprüfen." s n m coeff maxdeg d e r
+                    end
                 catch err
-                    @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
+                    @warn "Methode abgebrochen" s n m coeff maxdeg d e r err
                     flush(io)                       # nichts verlieren bei Abbruch
                     close(io)
                     return filepath
                 end
-                # status, t1, t2 = run_case(n, m, coeff, maxdeg, d, e, r, budget)
-                # if status != :ok
-                #     println("method_analysis: n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
-                #     open("skipped.log", "a") do f
-                #         println(f, "n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
-                #     end
-                #     continue
-                # end
 
                 for v in (n, m, coeff, maxdeg, d, e, r)
                     write(io, Int32(v))
                 end
                 write(io, Float64(t1 / t2), Float64(t1), Float64(t2))
+                write(io, Int32(s))                              
                 flush(io)                        # nichts verlieren bei Abbruch
-                println("n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r  ratio=$(round(t1 / t2; sigdigits = 4))")
+                println("n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r ratio=$(round(t1 / t2; sigdigits = 4))")
             end
         end
     finally
@@ -220,6 +244,80 @@ function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
     end
     return filepath
 end
+
+# function method_analysis(n_range::Vector{Int}, m_range::Vector{Int},
+#                          coeff_range::Vector{Int}, maxdeg_range::Vector{Int},
+#                          d_range::Vector{Int}, e_range::Vector{Int},
+#                          r_range::Vector{Int};
+#                          budget::Float64 = 5.0, seed = nothing)
+
+#     filepath = expanduser("~/OSCAR_Testdateien/hnf_full_rank_meins_vs_OSCAR_2.bin")   # <-- manuell anpassen
+
+#     seed === nothing || Random.seed!(seed)
+#     Kx, _ = polynomial_ring(QQ, :x)
+    
+#     A, _, _ = example_matrix(Kx, 2, 2, [(1,1)], 1, 1)
+#     hnf(A);                                      # Warm-up (Kompilierung), nicht gemessen
+#     hnf_lip_full_rank(A);     
+    
+#     io = open(filepath, "a")                     # "w" zu "a" ändern, damit angehangen wird, d.h. bestehende Daten erhalten bleiben
+#     try
+#         for n in n_range, m in m_range
+#             n < m && continue                    # voller Spaltenrang braucht n >= m
+#             for coeff in coeff_range, maxdeg in maxdeg_range,
+#                 r in r_range, d in d_range, e in e_range
+
+#                 # Bei r == 0 spielen d und e keine Rolle -> nur einmal ausführen
+#                 if r == 0 && (d != first(d_range) || e != first(e_range))
+#                     continue
+#                 end
+
+#                 pattern = Tuple{Int,Int}[(d, e) for _ in 1:r]
+#                 local A
+#                 try
+#                     A, _, _ = example_matrix(Kx, n, m, pattern, coeff, maxdeg)
+#                 catch err
+#                     @warn "Beispielgenerierung fehlgeschlagen" n m coeff maxdeg d e r err
+#                     continue
+#                 end
+
+#                 local t1, t2, A1, A2
+#                 try
+#                     t1, A1 = mean_runtime(hnf, A, budget)
+#                     GC.gc(true)
+#                     t2, A2 = mean_runtime(hnf_lip_full_rank, A, budget)
+#                     GC.gc(true)
+#                     if A1 != A2
+#                         @warn "HNFs sind ungleich, bitte nachprüfen." A n m coeff maxdeg d e r err
+#                     end
+#                 catch err
+#                     @warn "Methode abgebrochen" A n m coeff maxdeg d e r err
+#                     flush(io)                       # nichts verlieren bei Abbruch
+#                     close(io)
+#                     return filepath
+#                 end
+#                 # status, t1, t2 = run_case(n, m, coeff, maxdeg, d, e, r, budget)
+#                 # if status != :ok
+#                 #     println("method_analysis: n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
+#                 #     open("skipped.log", "a") do f
+#                 #         println(f, "n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r status=$status t1=$t1")
+#                 #     end
+#                 #     continue
+#                 # end
+
+#                 for v in (n, m, coeff, maxdeg, d, e, r)
+#                     write(io, Int32(v))
+#                 end
+#                 write(io, Float64(t1 / t2), Float64(t1), Float64(t2))
+#                 flush(io)                        # nichts verlieren bei Abbruch
+#                 println("n=$n m=$m coeff=$coeff maxdeg=$maxdeg d=$d e=$e r=$r  ratio=$(round(t1 / t2; sigdigits = 4))")
+#             end
+#         end
+#     finally
+#         close(io)
+#     end
+#     return filepath
+# end
 
 const MEM_LIMIT_KB = 6 * 1024^2    # 6 GiB, deutlich unter dem OOM-Limit deiner Maschine
 const HARD_TIMEOUT = 300.0         # Sekunden pro Fall (inkl. Start/Kompilierung)
@@ -278,7 +376,8 @@ function read_analysis(filepath::String)
         while !eof(io)
             ints   = [Int(read(io, Int32)) for _ in 1:nint]
             floats = [read(io, Float64) for _ in 1:nfloat]
-            push!(rows, NamedTuple{(RECORD_FIELDS_INT..., RECORD_FIELDS_FLOAT...)}((ints..., floats...)))
+            s      = Int(read(io, Int32))                              
+            push!(rows, NamedTuple{(RECORD_FIELDS_INT..., RECORD_FIELDS_FLOAT..., :seed)}((ints..., floats..., s)))  
         end
     end
     return rows
@@ -294,7 +393,8 @@ function visualize_analysis(filepath::String;
     # Daten als JSON-Array von Arrays: [n,m,coeff,maxdeg,d,e,r,ratio,t1,t2]
     num(x) = isfinite(x) ? string(x) : "null"
     recs = [string("[", join((string(getfield(r, f)) for f in RECORD_FIELDS_INT), ","), ",",
-                   join((num(getfield(r, f)) for f in RECORD_FIELDS_FLOAT), ","), "]")
+                   join((num(getfield(r, f)) for f in RECORD_FIELDS_FLOAT), ","), ",",
+                   r.seed, "]")                                  # NEU
             for r in rows]
     json = string("[", join(recs, ","), "]")
 
@@ -348,10 +448,15 @@ const HTML_TEMPLATE = raw"""
  th{background:#f0f0f0}
  td.empty{color:#aaa;text-align:center}
  #info{margin-top:10px;font-size:12px;color:#555}
+ #menu{display:none;position:absolute;background:#fff;border:1px solid #999;border-radius:4px;
+       box-shadow:2px 2px 6px rgba(0,0,0,.25);font-size:13px;max-height:300px;overflow-y:auto;z-index:10}
+ #menu div{padding:5px 12px;cursor:pointer;white-space:nowrap}
+ #menu div:hover{background:#e8f0fe}
 </style></head><body>
 <div id="ctrl"></div>
 <div id="tab"></div>
 <div id="info"></div>
+<div id="menu"></div>
 <script>
 const DATA = __DATA__;
 const P = ["n","m","coeff","maxdeg","d","e","r"];
@@ -416,12 +521,15 @@ function render(){
     used++;
     const key = x[state.row] + "|" + x[state.col];
     if (!cells.has(key)) cells.set(key, []);
-    cells.get(key).push(v);
+    cells.get(key).push([v, x[10]]);
   }
   const rv = vals[state.row], cv = vals[state.col];
-  const agg = a => state.metric === 7
-      ? Math.exp(a.reduce((s,v)=>s+Math.log(v),0)/a.length)   // geometrisches Mittel für Ratios
-      : a.reduce((s,v)=>s+v,0)/a.length;
+  const agg = a => {                                  // NEU: a ist Liste von [Wert, Seed]
+    const w = a.map(p => p[0]);
+    return state.metric === 7
+      ? Math.exp(w.reduce((s,v)=>s+Math.log(v),0)/w.length)   // geometrisches Mittel für Ratios
+      : w.reduce((s,v)=>s+v,0)/w.length;
+  };
   const fmt = v => v >= 1000 || v < 0.001 ? v.toExponential(2) : v.toPrecision(3);
 
   let h = "<table><tr><th>" + P[state.row] + " \\ " + P[state.col] + "</th>";
@@ -434,7 +542,9 @@ function render(){
       if (!a) { h += "<td class='empty'>–</td>"; continue; }
       const v = agg(a);
       const style = state.metric === 7 ? " style='background:" + color(v) + "'" : "";
-      h += "<td" + style + " title='" + a.length + " Messung(en)'>" + fmt(v) + "</td>";
+      const sd = a.map(p => p[1]).join(",");
+      h += "<td" + style + " data-seeds='" + sd + "' title='" + a.length +
+           " Messung(en), Seed(s): " + sd.split(",").join(", ") + "'>" + fmt(v) + "</td>";
     }
     h += "</tr>";
   }
@@ -444,6 +554,41 @@ function render(){
     "Datensätze gesamt: " + DATA.length + ", in dieser Tabelle: " + used +
     (state.metric === 7 ? ". Ratio > 1 (orange): method2 schneller, Ratio < 1 (blau): method1 schneller." : ".");
 }
+const menu = document.getElementById("menu");
+function fallbackCopy(t){
+  const ta = document.createElement("textarea");
+  ta.value = t; document.body.append(ta); ta.select();
+  document.execCommand("copy"); ta.remove();
+}
+function copyText(t){
+  if (navigator.clipboard && window.isSecureContext)
+    navigator.clipboard.writeText(t).catch(() => fallbackCopy(t));
+  else fallbackCopy(t);
+}
+function hideMenu(){ menu.style.display = "none"; }
+document.getElementById("tab").addEventListener("contextmenu", e => {
+  const td = e.target.closest("td[data-seeds]");
+  if (!td) return;                                   // leere Zellen: normales Browser-Menü
+  e.preventDefault();
+  const seeds = td.dataset.seeds.split(",");
+  menu.innerHTML = "";
+  const add = (label, text) => {
+    const b = document.createElement("div");
+    b.textContent = label;
+    b.onclick = () => { copyText(text); hideMenu(); };
+    menu.append(b);
+  };
+  if (seeds.length === 1) add("Seed kopieren (" + seeds[0] + ")", seeds[0]);
+  else {
+    seeds.forEach(s => add("Seed kopieren: " + s, s));
+    add("Alle Seeds kopieren", seeds.join(", "));
+  }
+  menu.style.left = e.pageX + "px";
+  menu.style.top = e.pageY + "px";
+  menu.style.display = "block";
+});
+document.addEventListener("click", hideMenu);
+document.addEventListener("keydown", e => { if (e.key === "Escape") hideMenu(); });
 render();
 </script></body></html>
 """
